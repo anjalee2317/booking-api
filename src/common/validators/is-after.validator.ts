@@ -9,11 +9,30 @@ export class IsAfterConstraint implements ValidatorConstraintInterface {
   validate(propertyValue: string, args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints;
     const relatedValue = (args.object as any)[relatedPropertyName];
-    return new Date(propertyValue) > new Date(relatedValue);
+    
+    // If either value is missing, skip validation
+    if (!propertyValue || !relatedValue) {
+      return true;
+    }
+    
+    try {
+      // Parse dates from ISO strings
+      const propertyDate = new Date(propertyValue);
+      const relatedDate = new Date(relatedValue);
+      
+      // Check for valid dates
+      if (isNaN(propertyDate.getTime()) || isNaN(relatedDate.getTime())) {
+        return false;
+      }
+      
+      return propertyDate > relatedDate;
+    } catch (error) {
+      return false;
+    }
   }
 
   defaultMessage(args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints;
-    return `$property must be after ${relatedPropertyName}`;
+    return `${args.property} must be after ${relatedPropertyName}`;
   }
 }

@@ -1,22 +1,27 @@
-import { IsDateString, IsOptional, IsString, IsUUID, Validate } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsDateString, IsOptional, IsString, IsUUID, Validate, IsEnum } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { IsAfterConstraint } from '../../common/validators/is-after.validator';
+import { BookingStatus } from '../types/booking.types';
 
 export class UpdateBookingDto {
-  @IsDateString()
-  @Type(() => Date)
-  startTime: Date;
+  @IsOptional()
+  @IsDateString({}, { message: 'startTime must be a valid date string (e.g., "2025-04-20T00:00:00.000Z")' })
+  startTime?: string;
 
-  @IsDateString()
-  @Type(() => Date)
+  @IsOptional()
+  @IsDateString({}, { message: 'endTime must be a valid date string (e.g., "2025-04-20T00:00:00.000Z")' })
   @Validate(IsAfterConstraint, ['startTime'])
-  endTime: Date;
+  endTime?: string;
 
   @IsOptional()
   @IsString()
   notes?: string;
 
+  @IsOptional()
   @IsUUID()
-  userId: string;
-}
+  userId?: string;
 
+  @IsOptional()
+  @IsEnum(BookingStatus)
+  status?: BookingStatus;
+}

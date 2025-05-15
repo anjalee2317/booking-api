@@ -44,7 +44,13 @@ export class BookingService {
   }
 
   async update(id: string, updateBookingDto: UpdateBookingDto): Promise<Booking> {
-    // TODO: Implement validation logic if needed (e.g., check if status transition is valid)
+    // Get the current booking to validate status transition
+    const currentBooking = await this.findOne(id);
+    
+    // Validate status transition if status is being updated
+    if (updateBookingDto.status && updateBookingDto.status !== currentBooking.status) {
+      this.validateStatusTransition(currentBooking.status, updateBookingDto.status);
+    }
 
     try {
       const updatedBooking = await this.prisma.booking.update({
@@ -72,6 +78,25 @@ export class BookingService {
          throw new NotFoundException(`Booking with ID "${id}" not found`);
       }
       throw error;
+    }
+  }
+
+  // Validate status transition
+  private validateStatusTransition(currentStatus: BookingStatus, newStatus: BookingStatus): void {
+    // Define valid status transitions
+    const validTransitions: Record<BookingStatus, BookingStatus[]> = {
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.CONFIRMED]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
+      [BookingStatus.CANCELLED]: [], // No transitions from CANCELLED
+      [BookingStatus.COMPLETED]: [], // No transitions from COMPLETED
+    };
+
+    // Check if the transition is valid
+    if (!validTransitions[currentStatus].includes(newStatus)) {
+      throw new BadRequestException(
+        `Invalid status transition from ${currentStatus} to ${newStatus}. ` +
+        `Valid transitions from ${currentStatus} are: ${validTransitions[currentStatus].join(', ') || 'none'}`
+      );
     }
   }
 }
