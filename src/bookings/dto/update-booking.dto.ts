@@ -5,11 +5,11 @@ import { BookingStatus } from '../types/booking.types';
 
 export class UpdateBookingDto {
   @IsOptional()
-  @IsDateString({}, { message: 'startTime must be a valid date string (e.g., "2025-04-20T00:00:00.000Z")' })
+  @IsDateString({}, { message: 'startTime must be a valid date string' })
   startTime?: string;
 
   @IsOptional()
-  @IsDateString({}, { message: 'endTime must be a valid date string (e.g., "2025-04-20T00:00:00.000Z")' })
+  @IsDateString({}, { message: 'endTime must be a valid date string' })
   @Validate(IsAfterConstraint, ['startTime'])
   endTime?: string;
 
