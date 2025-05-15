@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBookingDto } from '../dto/create-booking.dto';
 import { UpdateBookingDto } from '../dto/update-booking.dto';
 import { Booking, BookingStatus } from '../types/booking.types';
+import { User } from '../../users/types/user.types';
 
 @Injectable()
 export class BookingService {
@@ -15,32 +16,43 @@ export class BookingService {
     }
 
     // Create and save the booking entity using Prisma
-    const booking = await this.prisma.booking.create({
+    const bookingData = await this.prisma.booking.create({
       data: {
-        ...createBookingDto,
-        status: BookingStatus.PENDING, // Set default status
-        // If you had a User relation, you might link it here:
-        // user: { connect: { id: createBookingDto.userId } },
+        startTime: new Date(createBookingDto.startTime),
+        endTime: new Date(createBookingDto.endTime),
+        notes: createBookingDto.notes,
+        status: BookingStatus.PENDING,
+        userId: createBookingDto.userId,
       },
+      include: { user: true },
     });
-    return booking as Booking;
+    
+    // Map to our domain model
+    return this.mapPrismaBookingToBooking(bookingData);
   }
 
   async findAll(): Promise<Booking[]> {
-    // Retrieve all bookings
-    const bookings = await this.prisma.booking.findMany();
-    return bookings as Booking[];
+    // Retrieve all bookings with user data
+    const bookingsData = await this.prisma.booking.findMany({
+      include: { user: true },
+    });
+    
+    // Map to our domain models
+    return bookingsData.map(bookingData => this.mapPrismaBookingToBooking(bookingData));
   }
 
   async findOne(id: string): Promise<Booking> {
-    const booking = await this.prisma.booking.findUnique({
+    const bookingData = await this.prisma.booking.findUnique({
       where: { id },
+      include: { user: true },
     });
 
-    if (!booking) {
+    if (!bookingData) {
       throw new NotFoundException(`Booking with ID "${id}" not found`);
     }
-    return booking as Booking;
+    
+    // Map to our domain model
+    return this.mapPrismaBookingToBooking(bookingData);
   }
 
   async update(id: string, updateBookingDto: UpdateBookingDto): Promise<Booking> {
@@ -53,32 +65,74 @@ export class BookingService {
     }
 
     try {
-      const updatedBooking = await this.prisma.booking.update({
+      // Prepare update data
+      const updateData: any = {};
+      if (updateBookingDto.startTime) updateData.startTime = new Date(updateBookingDto.startTime);
+      if (updateBookingDto.endTime) updateData.endTime = new Date(updateBookingDto.endTime);
+      if (updateBookingDto.notes !== undefined) updateData.notes = updateBookingDto.notes;
+      if (updateBookingDto.status) updateData.status = updateBookingDto.status;
+      if (updateBookingDto.userId) updateData.userId = updateBookingDto.userId;
+      
+      const updatedBookingData = await this.prisma.booking.update({
         where: { id },
-        data: updateBookingDto,
+        data: updateData,
+        include: { user: true },
       });
-      return updatedBooking as Booking;
+      
+      // Map to our domain model
+      return this.mapPrismaBookingToBooking(updatedBookingData);
     } catch (error) {
       // Handle case where booking with id is not found
-      if (error.code === 'P2025') { // Prisma error code for record not found
+      if (error.code === 'P2025') {
          throw new NotFoundException(`Booking with ID "${id}" not found`);
       }
-      throw error; // Re-throw other errors
+      throw error;
     }
   }
 
   async remove(id: string): Promise<Booking> {
      try {
-      const deletedBooking = await this.prisma.booking.delete({
+      const deletedBookingData = await this.prisma.booking.delete({
         where: { id },
+        include: { user: true },
       });
-      return deletedBooking as Booking;
+      
+      // Map to our domain model
+      return this.mapPrismaBookingToBooking(deletedBookingData);
     } catch (error) {
        if (error.code === 'P2025') {
          throw new NotFoundException(`Booking with ID "${id}" not found`);
       }
       throw error;
     }
+  }
+
+  // Helper method to map Prisma Booking model to our domain Booking model
+  private mapPrismaBookingToBooking(prismaBooking: any): Booking {
+    const booking: Booking = {
+      id: prismaBooking.id,
+      startTime: prismaBooking.startTime,
+      endTime: prismaBooking.endTime,
+      notes: prismaBooking.notes || undefined,
+      status: prismaBooking.status as BookingStatus,
+      userId: prismaBooking.userId,
+      createdAt: prismaBooking.createdAt,
+      updatedAt: prismaBooking.updatedAt,
+    };
+    
+    // Add user data if available, removing sensitive information
+    if (prismaBooking.user) {
+      const userWithoutPassword: User = {
+        id: prismaBooking.user.id,
+        email: prismaBooking.user.email,
+        name: prismaBooking.user.name,
+        createdAt: prismaBooking.user.createdAt,
+        updatedAt: prismaBooking.user.updatedAt,
+      };
+      booking.user = userWithoutPassword;
+    }
+    
+    return booking;
   }
 
   // Validate status transition

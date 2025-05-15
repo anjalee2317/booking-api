@@ -6,6 +6,9 @@ export enum BookingStatus {
   COMPLETED = 'COMPLETED'
 }
 
+// Import the User interface
+import { User } from '../../users/types/user.types';
+
 // Define the Booking interface
 export interface Booking {
   id: string;
@@ -14,6 +17,7 @@ export interface Booking {
   notes?: string;
   status: BookingStatus;
   userId: string;
+  user?: User;
   createdAt: Date;
   updatedAt: Date;
 }

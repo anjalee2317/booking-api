@@ -1,12 +1,22 @@
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  password  String    
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+
+  @@map("users") // Maps the model name to a table name
 }
 
 model Booking {
@@ -15,12 +25,12 @@ model Booking {
   endTime   DateTime  @db.Timestamp()
   notes     String?   @db.VarChar(255) // Optional string field
   status    BookingStatus @default(PENDING)
-  userId    String // Assuming userId is a string/UUID from a User model (not defined here)
+  userId    String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  // TODO: If you had a User model, you would define the relation here:
-  // user      User      @relation(fields: [userId], references: [id])
+  // Relation to User model
+  user      User      @relation(fields: [userId], references: [id])
 
   @@map("bookings") // Maps the model name to a table name
 }
